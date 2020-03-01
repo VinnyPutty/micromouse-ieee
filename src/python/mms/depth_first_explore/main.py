@@ -1,4 +1,5 @@
 import time
+from typing import List, Tuple
 
 import API
 import sys
@@ -72,7 +73,141 @@ def update_position(current_position, direction_marker) -> (int, int):
         return current_position[0] - 1, current_position[1]
 
 
-def move(current_position, direction_marker, maze_state, unvisited_list: list = None):
+# FIXME handling of zero wall cells (use example maze 1 for testing)
+# FIXME handling of endless loop of explores due to:
+#   - an explore that returns to the starting cell of that explore
+#   - an explore that reaches a multi-path cell with one or more paths to a previously visited cell
+#   - any other reason for and endless loop of explores
+# a depth-first exploration of the maze
+def explore(current_position, direction_marker, maze_state=None, unvisited_list: list = None, explore_depth=0):
+    explore_depth += 1
+    log('Explore depth: {}'.format(explore_depth))
+    log('Current direction: {}, Focus Cell Representation: {}'.format(direction[direction_marker], ignore_wall(
+        wall_direction_marker=direction_marker, cell=maze_state[convert_position_to_map_position(current_position)[0]][
+            convert_position_to_map_position(current_position)[1]], opposite_wall=True)))
+    # while unvisited_list or (15 not in maze_state):
+    current_cell = update_cell_representation(current_position, direction_marker, maze_state)[-1]
+    # if maze_state: print_maze_state(maze_state)
+    branch_list: List[Tuple[Tuple[int, int], int]] = \
+        [(current_position, branch_direction) for branch_direction in
+         [no_wall for no_wall, ch in enumerate(ignore_wall(wall_direction_marker=direction_marker,
+                                                           cell=current_cell, opposite_wall=True)) if ch == 'N']]
+    return_path_list: List[List[Tuple[int, int]]] = []
+    return_path: List[Tuple[int, int]] = []
+
+    log('Branch List: {}'.format(branch_list))
+    for starting_position, starting_direction in branch_list:
+        if current_position != starting_position:
+            log('Current position/starting position mismatch: Curr is {}; Start is {}'.format(current_position,
+                                                                                              starting_position))
+        return_path.append(current_position)
+        direction_marker = turn_to_direction(starting_direction, direction_marker)
+        current_position = update_position(current_position, direction_marker)
+        API.moveForward()
+        current_cell = update_cell_representation(current_position, direction_marker, maze_state)[-1]
+        # log(current_cell)
+        focus_current_cell = ignore_wall(wall_direction_marker=direction_marker, cell=current_cell, opposite_wall=True)
+        while focus_current_cell.count('N') == 1:
+            return_path.append(current_position)
+            direction_marker = turn_to_direction(focus_current_cell.index('N'), direction_marker)
+            current_position = update_position(current_position, direction_marker)
+            API.moveForward()
+            current_cell = update_cell_representation(current_position, direction_marker, maze_state)[-1]
+            # log(current_cell)
+            focus_current_cell = ignore_wall(wall_direction_marker=direction_marker, cell=current_cell,
+                                             opposite_wall=True)
+        log('Current position: {}, Direction: {}, Maze State: \n'.format(current_position, direction[direction_marker]))
+        # print_maze_state(maze_state)
+        current_position, direction_marker, *_ = explore(current_position, direction_marker, maze_state, unvisited_list, explore_depth)
+
+        return_path.append(current_position)
+        return_path.reverse()
+        current_position, direction_marker = constructed_path_follow(return_path, direction_marker)
+
+    return current_position, direction_marker, maze_state
+
+
+def explore_():
+    pass
+
+
+def ignore_wall(wall_direction=None, wall_direction_marker=None, cell=None, cell_representation=None,
+                opposite_wall: bool = False):
+    if cell:
+        cell_representation = binary_state_representation_lookup[cell]
+        # if not cell_representation:
+        log('Cell: {}'.format(cell))
+        log('Cell representation: {}'.format(cell_representation))
+    if wall_direction:
+        wall_direction_marker = direction.index(wall_direction)
+    if opposite_wall:
+        wall_direction_marker = (wall_direction_marker + 2) % 4
+
+    focus_current_cell = cell_representation[:wall_direction_marker] + 'I' + cell_representation[
+                                                                             wall_direction_marker + 1:]
+
+    return focus_current_cell
+
+
+def turn_to_direction(target_direction_marker=None, direction_marker=None, target_direction=None,
+                      current_direction=None):
+    if target_direction and current_direction:
+        target_direction_marker, direction_marker = direction.index(target_direction), \
+                                                    direction.index(current_direction)
+
+    while direction_marker != target_direction_marker:
+        direction_marker = update_direction(direction_marker, turn='left')
+        API.turnLeft()
+
+    return direction_marker
+
+
+def constructed_path_follow(path: List[Tuple], direction_marker, maze_state=None) -> Tuple[Tuple[int, int], int]:
+    # Perform the necessary MMS commands to follow the path specified by the list of coordinates in param `path`
+    log('Following constructed path: {}'.format(path))
+    current_position = path.pop(0)
+    while len(path) > 0:
+        if maze_state:
+            update_cell_representation(current_position, direction_marker, maze_state)
+            # print_maze_state(maze_state)
+        log('Current position: {}, Current direction: {}'.format(current_position, direction[direction_marker]))
+        next_position = path.pop(0)
+
+        direction_to_move = next_position[0] - current_position[0], next_position[1] - current_position[1]
+        target_direction_marker = 0
+        if direction_to_move[0] == 1:
+            target_direction_marker = 1  # east
+        elif direction_to_move[0] == -1:
+            target_direction_marker = 3  # west
+        elif direction_to_move[1] == 1:
+            target_direction_marker = 0  # north
+        elif direction_to_move[1] == -1:
+            target_direction_marker = 2  # south
+        log('Next position: {}, Target direction: {}'.format(next_position, direction[target_direction_marker]))
+
+        direction_marker = turn_to_direction(target_direction_marker, direction_marker)
+
+        temp_position = update_position(current_position, direction_marker)
+        try:
+            if temp_position != next_position:
+                raise UserWarning
+        except UserWarning:
+            log('Incorrect planned movement. Expected next position: {}; '
+                'Actual next position: {}'.format(next_position, current_position))
+            return temp_position, direction_marker
+        else:
+            current_position = temp_position
+            API.moveForward()
+
+    if maze_state:
+        update_cell_representation(current_position, direction_marker, maze_state)
+        print_maze_state(maze_state)
+
+    return current_position, direction_marker
+
+
+def update_cell_representation(current_position, direction_marker, maze_state):
+    API.setColor(*current_position, 'B')
     map_position = convert_position_to_map_position(current_position)
     if binary_state_representation_lookup[maze_state[map_position[0]][map_position[1]]] == 'XXXX':
         API.setColor(*current_position, "B")
@@ -89,47 +224,7 @@ def move(current_position, direction_marker, maze_state, unvisited_list: list = 
 
         maze_state[map_position[0]][map_position[1]] = binary_state_representation[current_cell]
 
-    if unvisited_list and len(unvisited_list) > 0:
-        if not API.wallFront() and update_position(current_position, direction_marker) in unvisited_list:
-            API.moveForward()
-            log('Moving forward UL.')
-        elif not API.wallLeft() and update_position(current_position,
-                                                    update_direction(direction_marker, turn='left')) in unvisited_list:
-            direction_marker = update_direction(direction_marker, turn='left')
-            API.turnLeft()
-            log('Turning left UL.')
-            API.moveForward()
-            log('Moving forward UL.')
-        elif not API.wallRight() and update_position(current_position,
-                                                     update_direction(direction_marker,
-                                                                      turn='right')) in unvisited_list:
-            direction_marker = update_direction(direction_marker, turn='right')
-            API.turnRight()
-            log('Turning right UL.')
-            API.moveForward()
-            log('Moving forward UL.')
-        else:
-            direction_marker = left_wall_follow(direction_marker)
-    else:
-        direction_marker = left_wall_follow(direction_marker)
-    current_position = update_position(current_position, direction_marker)
-    if unvisited_list and current_position in unvisited_list:
-        unvisited_list.remove(current_position)
-    return current_position, direction_marker, maze_state
-
-
-def left_wall_follow(direction_marker):
-    if not API.wallLeft():
-        API.turnLeft()
-        log('Turning left.')
-        direction_marker = update_direction(direction_marker, turn='left')
-    while API.wallFront():
-        API.turnRight()
-        log('Turning right.')
-        direction_marker = update_direction(direction_marker, turn='right')
-    API.moveForward()
-    log('Moving forward.')
-    return direction_marker
+    return maze_state, maze_state[map_position[0]][map_position[1]]
 
 
 def add_wall(cell, direction_marker):
@@ -139,6 +234,7 @@ def add_wall(cell, direction_marker):
 
 def print_maze_state(maze_state):
     [print(x) for x in maze_state]
+    [log(x) for x in maze_state]
 
 
 def convert_position_to_map_position(current_position):
@@ -152,12 +248,12 @@ def main():
         goal = []
     unvisited_list = []
     maze_state = [[15 for _ in range(MAZE_WIDTH)] for _ in range(MAZE_HEIGHT)]
-    print_maze_state(maze_state)
+    # print_maze_state(maze_state)
     # exit(0)
     for i in range(16):
         for j in range(16):
             unvisited_list.append((i, j))
-    unvisited_list = unvisited_list[1:]
+    # unvisited_list = unvisited_list[1:]
     for position in goal:
         API.setColor(*position, "G")
         API.setText(*position, 'END')
@@ -166,10 +262,25 @@ def main():
     log("Running...")
     # API.setColor(0, 0, "G")
     # API.setText(0, 0, "abc")
-    while current_position not in goal:
-        (current_position, direction_marker, maze_state) = move(current_position, direction_marker, maze_state,
-                                                                unvisited_list=unvisited_list)
-        print_maze_state(maze_state)
+    # while current_position not in goal:
+    #     (current_position, direction_marker, maze_state) = move(current_position, direction_marker, maze_state,
+    #                                                             unvisited_list=unvisited_list)
+    #     print_maze_state(maze_state)
+    test_path = [(0, 0), (0, 1), (1, 1), (2, 1), (2, 2), (2, 3), (3, 3), (4, 3), (4, 4), (4, 5), (5, 5), (6, 5),
+                 (6, 6), (6, 7), (7, 7), (8, 7), (8, 8), (8, 9), (9, 9), (9, 10), (10, 10), (11, 10), (11, 11), ]
+    example_maze_5_solution_path = [(0, 0), (0, 1), (0, 2), (0, 3), (0, 4), (0, 5), (0, 6), (0, 7), (1, 7), (2, 7),
+                                    (2, 6), (2, 5), (2, 4), (2, 3), (2, 2), (3, 2), (3, 3), (4, 3), (4, 4), (5, 4),
+                                    (6, 4), (6, 3), (7, 3), (7, 4), (7, 5), (6, 5), (6, 6), (6, 7), (5, 7), (5, 6),
+                                    (5, 5), (4, 5), (4, 6), (4, 7), (3, 7), (3, 8), (2, 8), (1, 8), (0, 8), (0, 9),
+                                    (0, 10), (1, 10), (1, 9), (2, 9), (2, 10), (3, 10), (4, 10), (5, 10), (5, 11),
+                                    (4, 11), (3, 11), (2, 11), (1, 11), (0, 11), (0, 12), (0, 13), (0, 14), (0, 15),
+                                    (1, 15), (2, 15), (2, 14), (2, 13), (2, 12), (3, 12), (4, 12), (4, 13), (5, 13),
+                                    (5, 12), (6, 12), (6, 13), (7, 13), (7, 12), (7, 11), (6, 11), (6, 10), (6, 9),
+                                    (7, 9), (7, 10), (8, 10), (8, 11), (8, 12), (8, 13), (8, 14), (8, 15), (9, 15),
+                                    (10, 15), (11, 15), (12, 15), (12, 14), (12, 13), (12, 12), (12, 11), (11, 11),
+                                    (10, 11), (10, 12), (9, 12), (9, 11), (9, 10), (9, 9), (8, 9), (8, 8), ]
+    # constructed_path_follow(example_maze_5_solution_path, direction_marker, maze_state)
+    explore(current_position, direction_marker, maze_state)
 
 
 if __name__ == "__main__":
