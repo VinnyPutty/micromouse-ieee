@@ -76,7 +76,6 @@ def update_position(current_position, direction_marker) -> (int, int):
 # FIXME handling of zero wall cells (use example maze 1 for testing)
 # FIXME handling of endless loop of explores due to:
 #   - an explore that returns to the starting cell of that explore
-#   - an explore that reaches a multi-path cell with one or more paths to a previously visited cell
 #   - any other reason for and endless loop of explores
 # a depth-first exploration of the maze
 def explore(current_position, direction_marker, maze_state=None, unvisited_list: list = None, explore_depth=0):
@@ -91,7 +90,9 @@ def explore(current_position, direction_marker, maze_state=None, unvisited_list:
     branch_list: List[Tuple[Tuple[int, int], int]] = \
         [(current_position, branch_direction) for branch_direction in
          [no_wall for no_wall, ch in enumerate(ignore_wall(wall_direction_marker=direction_marker,
-                                                           cell=current_cell, opposite_wall=True)) if ch == 'N']]
+                                                           cell=current_cell, opposite_wall=True)) if ch == 'N'] if
+         maze_state[convert_position_to_map_position(update_position(current_position, branch_direction))[0]]
+         [convert_position_to_map_position(update_position(current_position, branch_direction))[1]] == 15]
     return_path_list: List[List[Tuple[int, int]]] = []
     return_path: List[Tuple[int, int]] = []
 
