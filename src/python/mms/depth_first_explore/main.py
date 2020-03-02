@@ -5,7 +5,7 @@ import API
 import sys
 
 DEBUG_MODE = True
-LOGGING_ON = True
+LOGGING_ON = False
 GOAL_CONDITION = False
 direction = ['n', 'e', 's', 'w']
 MAZE_WIDTH = 16
@@ -46,6 +46,13 @@ binary_state_representation_lookup = {
     14: 'WWWN',
     15: 'XXXX'
 }
+
+# Example Maze Evaluations:
+# Example Maze #1: Fail
+# Example Maze #2: Success (Fully explored and return to start)
+# Example Maze #3: Fail
+# Example Maze #4: Fail
+# Example Maze #5: Fail
 
 
 def log(string):
