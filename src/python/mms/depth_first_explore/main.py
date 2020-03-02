@@ -77,6 +77,14 @@ def update_position(current_position, direction_marker) -> (int, int):
 # FIXME handling of endless loop of explores due to:
 #   - an explore that returns to the starting cell of that explore
 #   - any other reason for and endless loop of explores
+# TODO implement "return to start" when below conditions are met:
+#   - every cell representation is known
+#   - every cell representation but the goal cells is known
+#   - unvisited list is empty
+#   - unvisited list only contains goal cells
+# TODO implement "target largest unvisited regions"
+# TODO implement "target exploration of particular cell"
+#   - this might require a known path to a cell adjacent to that particular cell
 # a depth-first exploration of the maze
 def explore(current_position, direction_marker, maze_state=None, unvisited_list: list = None, explore_depth=0):
     explore_depth += 1
