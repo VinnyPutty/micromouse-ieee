@@ -68,12 +68,57 @@ def find_all_routes(maze_state, *, starting_position=None, starting_map_position
         default_ending_map_positions = [convert_position_to_map_position(position) for position in
                                         default_ending_positions]
         ending_map_position = [map_position for map_position in default_ending_map_positions if
-                               maze_state[map_position[0]][map_position[1]].count('W') == 1][0]
-    # TODO: implement depth-first search to find all routes between `starting_position` and `ending_position`
+                               binary_state_representation_lookup[maze_state[map_position[0]][map_position[1]]
+                                                                  ].count('W') == 1][0]
+    valid_map_routes = []
+    find_all_routes_(maze_state, current_map_position=starting_map_position, target_map_position=ending_map_position,
+                     valid_routes=valid_map_routes)
+    valid_routes = []
+    for route in valid_map_routes:
+        for i in range(len(route)):
+            route[i] = convert_map_position_to_position(route[i])
+        valid_routes.append(route)
+
+    return valid_routes
 
 
-def find_all_routes_():
-    pass
+def find_all_routes_(maze_state, current_map_position, target_map_position, valid_routes, current_route=[]):
+    if len(valid_routes) > 100000: return
+    if current_map_position[0] < 0 or current_map_position[0] > MAZE_HEIGHT - 1 or current_map_position[1] < 0 or \
+            current_map_position[1] > MAZE_WIDTH - 1:
+        return
+    if current_map_position == target_map_position:
+        current_route.append(current_map_position)
+        valid_routes.append(current_route)
+        return
+    cell_representation = binary_state_representation_lookup[
+        maze_state[current_map_position[0]][current_map_position[1]]]
+    if cell_representation.count('N') == 1 and \
+            update_map_position(current_map_position, cell_representation.index('N')) == current_route[-1]:
+        return
+
+    current_route.append(current_map_position)
+    potential_next_cells = [update_map_position(current_map_position, i) for i, ch in
+                            enumerate(cell_representation) if ch == 'N']
+    next_cells = [cell for cell in potential_next_cells if cell not in current_route]
+    if not len(next_cells):
+        return
+    # API.setColor(convert_map_position_to_position(current_map_position)[0],
+    #              convert_map_position_to_position(current_map_position)[1], 'R')
+    # time.sleep(.1)
+    for cell in next_cells:
+        find_all_routes_(maze_state, cell, target_map_position, valid_routes, current_route.copy())
+
+
+def update_map_position(current_map_position, direction_marker) -> (int, int):
+    if not direction_marker:
+        return current_map_position[0] - 1, current_map_position[1]
+    elif direction_marker == 1:
+        return current_map_position[0], current_map_position[1] + 1
+    elif direction_marker == 2:
+        return current_map_position[0] + 1, current_map_position[1]
+    elif direction_marker == 3:
+        return current_map_position[0], current_map_position[1] - 1
 
 
 def convert_position_to_map_position(current_position, maze_height=None):
