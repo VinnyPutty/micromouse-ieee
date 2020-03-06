@@ -73,3 +73,47 @@ def find_all_routes_():
 
 def convert_position_to_map_position(current_position, maze_height=None):
     return (maze_height if maze_height else MAZE_HEIGHT) - 1 - current_position[1], current_position[0]
+
+
+def convert_map_position_to_position(current_map_position, maze_height=None):
+    return current_map_position[1], (maze_height if maze_height else MAZE_HEIGHT) - 1 - current_map_position[0]
+
+
+def print_maze_state(maze_state):
+    [print(x) for x in maze_state]
+    [log(x) for x in maze_state]
+
+
+if __name__ == '__main__':
+    # print('Module not meant to be used as main.')
+    example_maze_2 = [[13, 9, 10, 10, 10, 10, 10, 8, 10, 10, 12, 9, 8, 10, 8, 12],
+                   [5, 5, 9, 12, 9, 8, 12, 3, 8, 12, 5, 5, 3, 12, 5, 5],
+                   [5, 5, 5, 3, 6, 5, 1, 12, 5, 5, 5, 3, 12, 5, 5, 7],
+                   [5, 5, 1, 12, 9, 6, 5, 3, 6, 5, 1, 10, 2, 6, 3, 12],
+                   [1, 2, 6, 5, 3, 12, 3, 10, 12, 3, 2, 10, 10, 10, 10, 4],
+                   [3, 10, 12, 3, 10, 2, 8, 12, 3, 10, 10, 12, 11, 10, 12, 5],
+                   [9, 10, 6, 9, 10, 8, 6, 3, 10, 8, 12, 5, 9, 10, 6, 5],
+                   [5, 9, 12, 1, 12, 3, 12, 9, 8, 6, 5, 5, 1, 10, 10, 6],
+                   [5, 5, 3, 6, 5, 9, 6, 3, 6, 9, 6, 5, 3, 10, 8, 12],
+                   [5, 5, 9, 12, 5, 5, 9, 10, 12, 3, 12, 5, 9, 10, 6, 5],
+                   [5, 1, 6, 1, 6, 3, 6, 9, 2, 12, 1, 4, 1, 10, 10, 6],
+                   [1, 6, 9, 6, 9, 10, 10, 2, 12, 3, 6, 5, 3, 10, 8, 12],
+                   [1, 10, 6, 9, 6, 9, 10, 12, 3, 10, 12, 3, 10, 10, 6, 5],
+                   [5, 9, 12, 5, 9, 6, 13, 5, 9, 12, 5, 9, 10, 10, 12, 5],
+                   [3, 4, 3, 6, 5, 9, 2, 2, 6, 7, 5, 5, 9, 14, 5, 5],
+                   [9, 2, 10, 10, 2, 2, 10, 10, 10, 10, 2, 6, 3, 10, 2, 6]]
+    all_valid_routes = find_all_routes(example_maze_2)
+    # print(len(all_valid_routes), all_valid_routes)
+    log('Number of routes found: {}'.format(len(all_valid_routes)))
+    # log(all_valid_routes)
+    # route_lengths = ', '.join([str(len(valid_route)) for valid_route in all_valid_routes])
+    # log(route_lengths)
+    # longest_route = max(all_valid_routes, key=len)
+    # log('Longest route length: {}'.format(len(longest_route)))
+    shortest_route = min(all_valid_routes, key=len)
+    log('Shortest route length: {}'.format(len(shortest_route)))
+    for maze_cell in shortest_route:
+        API.setColor(maze_cell[0], maze_cell[1], 'G')
+        time.sleep(.2)
+
+    pass
