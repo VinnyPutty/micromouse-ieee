@@ -1,9 +1,14 @@
 import pickle
+import sys
+import time
+from typing import Tuple, List
 
 import API
 
 LOGGING_ON = True
 MAZE_HEIGHT = 16
+MAZE_WIDTH = 16
+direction = ['n', 'e', 's', 'w']
 binary_state_representation = {
     'NNNN': 0,
     'NNNW': 1,
@@ -56,7 +61,7 @@ def find_all_routes(maze_state, *, starting_position=None, starting_map_position
     if starting_position:
         starting_map_position = convert_position_to_map_position(starting_position)
     elif not starting_map_position:
-        starting_map_position = convert_position_to_map_position((0, 0))
+        starting_map_position = convert_position_to_map_position(default_starting_position)
     if ending_position:
         ending_map_position = convert_position_to_map_position(ending_position)
     elif not ending_map_position:
