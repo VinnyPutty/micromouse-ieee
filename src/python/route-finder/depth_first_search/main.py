@@ -1,5 +1,8 @@
 import pickle
 
+import API
+
+LOGGING_ON = True
 MAZE_HEIGHT = 16
 binary_state_representation = {
     'NNNN': 0,
@@ -39,7 +42,15 @@ binary_state_representation_lookup = {
 }
 
 
-def find_all_routes(maze_state, starting_position=None, starting_map_position=None, ending_position=None, ending_map_position=None):
+def log(string):
+    if LOGGING_ON:
+        sys.stderr.write("{}\n".format(string))
+        sys.stderr.flush()
+
+
+def find_all_routes(maze_state, *, starting_position=None, starting_map_position=None, ending_position=None,
+                    ending_map_position=None):
+    log('Finding all routes...')
     default_starting_position = 0, 0
     default_ending_positions = [(7, 7), (7, 8), (8, 7), (8, 8)]
     if starting_position:
